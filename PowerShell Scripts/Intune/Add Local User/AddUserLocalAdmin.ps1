@@ -1,0 +1,1 @@
+net localgroup administrators "AzureAD\dtheilman@nexion-health.com" /add
