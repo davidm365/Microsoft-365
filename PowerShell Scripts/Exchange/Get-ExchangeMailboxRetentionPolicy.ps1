@@ -1,0 +1,1 @@
+Get-Mailbox -ResultSize Unlimited | select DisplayName,UserPrincipalName,RetentionHoldEnabled, RetentionPolicy | Export-CSV C:\Temp\UserRetentionPolicy.csv
