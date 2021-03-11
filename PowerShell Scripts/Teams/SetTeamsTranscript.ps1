@@ -1,0 +1,1 @@
+Set-CsTeamsMeetingPolicy -Identity Global -AllowTranscription $True
