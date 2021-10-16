@@ -1,26 +1,13 @@
 # TeamsGroupsActivityReportV5.PS1
+# https://github.com/12Knocksinna/Office365itpros/blob/master/TeamsGroupsActivityReportV5.PS1
 # A script to check the activity of Microsoft 365 Groups and Teams and report the groups and teams that might be deleted because they're not used.
 # We check the group mailbox to see what the last time a conversation item was added to the Inbox folder. 
 # Another check sees whether a low number of items exist in the mailbox, which would show that it's not being used.
 # We also check the group document library in SharePoint Online to see whether it exists or has been used in the last 90 days.
 # And we check Teams compliance items to figure out if any chatting is happening.
-
-# Created 29-July-2016  Tony Redmond 
-# V2.0 5-Jan-2018
-# V3.0 17-Dec-2018
-# V4.0 11-Jan-2020
-# V4.1 15-Jan-2020 Better handling of the Team Chat folder
-# V4.2 30-Apr-2020 Replaced $G.Alias with $G.ExternalDirectoryObjectId. Fixed problem with getting last conversation from Groups where no conversations are present.
-# V4.3 13-May-2020 Fixed bug and removed the need to load the Teams PowerShell module
-# V4.4 14-May-2020 Added check to exit script if no Microsoft 365 Groups are found
-# V4.5 15-May-2020 Some people reported that Get-Recipient is unreliable when fetching Groups, so added code to revert to Get-UnifiedGroup if nothing is returned by Get-Recipient
-# V4.6 8-Sept-2020 Better handling of groups where the SharePoint team site hasn't been created
-# V4.7 13-Oct-2020 Teams compliance records are now in a different location in group mailboxes
-# V5.0 21-Dec-2020 Use Graph API to get Groups and Teams data
-# V5.1 21-Jan-2021 Add check for archived teams
 #
 # Needs the following Graph permissions:
-# Group.Read.All, Reports.Read.All, User.Read.All | For returning owner's info https://docs.microsoft.com/fr-fr/graph/permissions-reference#limited-information-returned-for-inaccessible-member-objects
+# Group.Read.All, Reports.Read.All, User.Read.All, GroupMember.Read.All 
 CLS
 #+-------------------------- Functions etc. -------------------------
 function Get-GraphData {
@@ -91,10 +78,8 @@ function Get-GraphData {
 # Check that we are connected to Exchange Online
 $ModulesLoaded = Get-Module | Select Name
 If (!($ModulesLoaded -match "ExchangeOnlineManagement")) {Write-Host "Please connect to the Exchange Online Management module and then restart the script"; break}
-       
+# OK, we seem to be fully connected to Exchange Online      
 $OrgName = (Get-OrganizationConfig).Name
-# OK, we seem to be fully connected to both Exchange Online and SharePoint Online...
-Write-Host "Checking Microsoft 365 Groups and Teams in the tenant:" $OrgName
 
 # Setup some stuff we use
 $WarningDate = (Get-Date).AddDays(-90); $WarningEmailDate = (Get-Date).AddDays(-365); $Today = (Get-Date); $Date = $Today.ToShortDateString()
@@ -127,7 +112,7 @@ $htmlhead="<html>
 		
 # Get a list of Groups in the tenant
 CLS
-Write-Host "Extracting list of Microsoft 365 Groups for checking..."
+Write-Host "Checking Microsoft 365 Groups and Teams in the tenant:" $OrgName
 [Int]$GroupsCount = 0; [int]$TeamsCount = 0; $UsedGroups = $False
 
 # Define the values applicable for the application used to connect to the Graph - these will be different for your tenant
@@ -198,7 +183,6 @@ ForEach ($Group in $Groups) {
    $GroupData = Get-GraphData -AccessToken $Token -Uri $Uri
    If ($GroupData.count -eq 0) {$OwnerNames = "No owners found" }
     Else {$OwnerNames = $GroupData.DisplayName -join ", " }
-   }
    # Get extended group properties 
    $Uri = "https://graph.microsoft.com/v1.0/groups/" + $Group.Id + "?`$select=visibility,description,assignedlabels"
    $GroupData = Get-GraphData -AccessToken $Token -Uri $uri
@@ -208,13 +192,26 @@ ForEach ($Group in $Groups) {
    # Get SharePoint site URL
    $SPOUrl = $Null; $SPODocLib = $Null; $SPOQuotaUsed = 0; $SPOLastDateActivity = $Null
    $Uri = "https://graph.microsoft.com/v1.0/groups/" + $Group.Id + "/drive"
-   $SPOData = Get-GraphData -AccessToken $Token -Uri $uri
-   If ($SPOData) { # Using language-specific values to identify the document library defined
-       $SPOUrl = $SPOData.WebUrl.SubString(0,$SpoData.weburl.IndexOf($SharedDocFolder))
-       $SPODocLib = $SPOUrl + $SharedDocFolder2 
-       $SPOQuotaUsed = [Math]::Round($SPOData.quota.used/1Gb,2)
-       $SPOLastDateActivity = Get-Date ($SPOData.lastModifiedDateTime) -format g }
-   Else { CLS; Write-Host "Continuing to fetch information about Microsoft 365 Groups..." } # Get rid of mucky SharePoint error  308 
+   [array]$SPOData = Get-GraphData -AccessToken $Token -Uri $uri
+   [int]$LLVValue = $SPOData.WebUrl.IndexOf($SharedDocFolder) # Can we find a local-language value for the document library in the data returned?
+   If (($SPOData.id) -and ($SPOData.DriveType -eq "documentLibrary")) { # Using language-specific values to identify the document library defined
+       If ($LLVValue -gt 0) {  # If we have a local language value, parse it to extract the document library URL
+          $SPOUrl = $SPOData.WebUrl.SubString(0,$SPOData.WebUrl.IndexOf($SharedDocFolder))
+          $SPODocLib = $SPOUrl + $SharedDocFolder2 
+          $SPOQuotaUsed = [Math]::Round($SPOData.quota.used/1Gb,2)
+          $SPOLastDateActivity = Get-Date ($SPOData.lastModifiedDateTime) -format g 
+       } # End if
+       Else  { # Just report what we read from the Graph
+         $SPOUrl = $SPOData.WebUrl
+          $SPODocLib = $SPOUrl + $SharedDocFolder2 
+          $SPOQuotaUsed = [Math]::Round($SPOData.quota.used/1Gb,2)
+          $SPOLastDateActivity = Get-Date ($SPOData.lastModifiedDateTime) -format g 
+       } # End Else
+   } # End if against $SPOData
+   Else { 
+       CLS; Write-Host "Continuing to fetch information about Microsoft 365 Groups..." 
+   } # Get rid of mucky SharePoint error  308 
+   
      # Get Member and Guest member counts
    $Uri = "https://graph.microsoft.com/beta/groups/" + $Group.Id + "/Members/Microsoft.Graph.User/`$count?`$filter=UserType eq 'Guest'"
    $GuestMemberCount = Get-GraphData -AccessToken $Token -Uri $uri
@@ -246,7 +243,7 @@ $Teams.ForEach( {
    $TeamsHash.Add($_.Id, $_.DisplayName) } )
 
 # All groups and teams found...
-$TeamsCount = $TeamsHash.Count
+$TeamsCount = $Teams.Count
 $GroupsCount = $GroupsList.Count
 If (!$GroupsCount) {Write-Host "No Microsoft 365 Groups can be found - exiting"; break}
 If (!$TeamsCount) {Write-Host "No Microsoft Teams found in the tenant - continuing..." }
@@ -412,7 +409,7 @@ If (($TeamsEnabled -eq $True) -and ($NumberOfChats -le 100)) { Write-Host "Team-
           LastConversation    = $LastConversation
           NumberConversations = $NumberConversations
           LastSPOActivity     = $SPOActivity
-          SPOStorageGB        = $SPOStorage
+          SPOStorageGB        = $SPOStorageUsed
           SPOStatus           = $SPOStatus
           WhenCreated         = $G.WhenCreated
           DaysOld             = $GroupAge
@@ -465,7 +462,8 @@ Write-Host " "
 Write-Host "Total Elapsed time: " $OverAllElapsed "seconds"
 Write-Host "Summary report in" $ReportFile "and CSV in" $CSVFile
 
-.
+# An example script used to illustrate a concept. More information about the topic can be found in the Office 365 for IT Pros eBook https://gum.co/O365IT/
+# and/or a relevant article on https://office365itpros.com or https://www.practical365.com. See our post about the Office 365 for IT Pros repository # https://office365itpros.com/office-365-github-repository/ for information about the scripts we write.
 
 # Do not use our scripts in production until you are satisfied that the code meets the need of your organization. Never run any code downloaded from the Internet without
 # first validating the code in a non-production environment.
