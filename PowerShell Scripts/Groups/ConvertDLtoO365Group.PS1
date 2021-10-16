@@ -1,4 +1,5 @@
 # ConvertDLtoO365Group.PS1
+# https://github.com/12Knocksinna/Office365itpros/blob/master/ConvertDLtoO365Group.PS1
 #    .SYNOPSIS
 #    Converts a distribution list to an Microsoft 365 Group.
 #   
@@ -7,6 +8,7 @@
 #   
 #    .EXAMPLE
 #    .\ConvertDLtoO365Group -InputGroup Managers
+#
 #
 
 param(
