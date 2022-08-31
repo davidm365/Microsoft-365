@@ -1,8 +1,8 @@
 ﻿<Configuration>
-  <Group Name="Settings" Version="4.1.0" TimeSaved="2/9/2021 2:36:55 PM (UTC -5:00)">
+  <Group Name="Settings" Version="4.6.0" TimeSaved="8/31/2022 7:51:32 AM (UTC -4:00)">
     <Group Name="General">
       <Property Name="SettingsModifiedTime">
-        <Value>2/9/2021 2:36:38 PM</Value>
+        <Value>8/31/2022 7:51:18 AM</Value>
       </Property>
       <Property Name="DownloadPath" Default="ValueIsDefault" />
       <Property Name="CustomCatalogPaths" Default="ValueIsDefault" />
@@ -11,6 +11,8 @@
       <Property Name="SuspendBitLocker">
         <Value>true</Value>
       </Property>
+      <Property Name="AutoUpdateUserConsent" Default="ValueIsDefault" />
+      <Property Name="MaxRetryAttempts" Default="ValueIsDefault" />
       <Group Name="CustomProxySettings">
         <Property Name="UseDefaultProxy" Default="ValueIsDefault" />
         <Property Name="Server" Default="ValueIsDefault" />
@@ -20,6 +22,8 @@
     </Group>
     <Group Name="Schedule">
       <Property Name="ScheduleMode" Default="ValueIsDefault" />
+      <Property Name="MonthlyScheduleMode" Default="ValueIsDefault" />
+      <Property Name="WeekOfMonth" Default="ValueIsDefault" />
       <Property Name="Time" Default="ValueIsDefault" />
       <Property Name="DayOfWeek" Default="ValueIsDefault" />
       <Property Name="DayOfMonth" Default="ValueIsDefault" />
@@ -28,6 +32,14 @@
       </Property>
       <Property Name="ScheduledExecution" Default="ValueIsDefault" />
       <Property Name="RebootWait" Default="ValueIsDefault" />
+      <Property Name="DeferUpdate" Default="ValueIsDefault" />
+      <Property Name="DisableNotification" Default="ValueIsDefault" />
+      <Property Name="InstallationDeferral" Default="ValueIsDefault" />
+      <Property Name="DeferralInstallInterval" Default="ValueIsDefault" />
+      <Property Name="DeferralInstallCount" Default="ValueIsDefault" />
+      <Property Name="SystemRestartDeferral" Default="ValueIsDefault" />
+      <Property Name="DeferRestartInterval" Default="ValueIsDefault" />
+      <Property Name="DeferRestartCount" Default="ValueIsDefault" />
     </Group>
     <Group Name="UpdateFilter">
       <Property Name="FilterApplicableMode" Default="ValueIsDefault" />
